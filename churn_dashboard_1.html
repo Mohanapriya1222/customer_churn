@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer Churn KPI Dashboard</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1b1b2f;--mu:#5a6072;--bd:#dde0ea;--c1:#0072B2;--c2:#D55E00;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14151f;--card:#1e2030;--tx:#eef0f8;--mu:#a7adc2;--bd:#33364b;--c1:#56B4E9;--c2:#E69F00}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:14px;max-width:1000px;margin:auto}
+h1{font-size:1.3rem;margin:4px 0}p.s{color:var(--mu);margin:0 0 12px;font-size:.9rem}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+label{font-size:.75rem;color:var(--mu);display:block}select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.k .v{font-size:1.5rem;font-weight:700}.k .l{font-size:.75rem;color:var(--mu)}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+h2{font-size:1rem;margin:0 0 8px}.row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:.82rem}
+.row .n{width:105px;flex:none}.bar{flex:1;background:var(--bd);border-radius:5px;height:18px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}.row .t{width:54px;text-align:right;flex:none}
+.ins{margin-top:8px;font-size:.82rem;color:var(--mu);border-left:3px solid var(--c1);padding-left:8px}
+.lg{font-size:.75rem;color:var(--mu);margin-bottom:6px}.lg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 8px}
+.def{font-size:.78rem;color:var(--mu);margin-top:12px;line-height:1.5}
+</style></head><body>
+<h1>Customer Churn KPI Dashboard</h1>
+<p class="s">15 customers (synthetic, cleaned dataset). Use the filters to explore segments.</p>
+<div class="f">
+<div><label for="fc">Contract</label><select id="fc"></select></div>
+<div><label for="ft">Tenure</label><select id="ft"><option>All</option><option>0-12 months</option><option>13-24 months</option><option>25+ months</option></select></div>
+<div><label for="fp">Payment method</label><select id="fp"></select></div>
+</div>
+<div class="k" id="k"></div>
+<div class="g">
+<div class="card"><h2>Churn rate by contract</h2><div class="lg"><b style="background:var(--c2)"></b>Churned<b style="background:var(--c1)"></b>Retained</div><div id="c1"></div><div class="ins" id="i1"></div></div>
+<div class="card"><h2>Churn rate by plan</h2><div class="lg"><b style="background:var(--c2)"></b>Churned<b style="background:var(--c1)"></b>Retained</div><div id="c2"></div><div class="ins" id="i2"></div></div>
+<div class="card"><h2>Customers by tenure band</h2><div class="lg"><b style="background:var(--c2)"></b>Churned<b style="background:var(--c1)"></b>Retained</div><div id="c3"></div><div class="ins" id="i3"></div></div>
+<div class="card"><h2>Monthly revenue at risk by payment method ($)</h2><div id="c4"></div><div class="ins" id="i4"></div></div>
+</div>
+<div class="def"><b>KPI definitions.</b> Churn rate = churned customers / customers. Retention rate = 1 - churn rate. Revenue at risk = monthly charges of churned customers (monthly recurring revenue lost), shown as % of total monthly revenue. Tenure KPIs = average months as a customer, for all, churned and retained customers. Small sample, so patterns are indicative only.</div>
+<script>
+const D=[["CUST-1001","Basic","Month-to-Month","Credit Card",12,49.99,"Yes"],["CUST-1002","Pro","One Year","Bank Transfer",24,79.99,"No"],["CUST-1003","Basic","Month-to-Month","UPI",6,49.99,"Yes"],["CUST-1004","Enterprise","Two Year","Credit Card",36,149.99,"No"],["CUST-1005","Pro","Month-to-Month","Debit Card",8,79.99,"Yes"],["CUST-1006","Basic","One Year","UPI",18,49.99,"No"],["CUST-1007","Basic","Month-to-Month","Credit Card",3,49.99,"Yes"],["CUST-1008","Enterprise","Two Year","Bank Transfer",48,149.99,"No"],["CUST-1009","Pro","One Year","Credit Card",15,79.99,"No"],["CUST-1010","Basic","Month-to-Month","UPI",4,49.99,"Yes"],["CUST-1011","Enterprise","Two Year","Credit Card",30,149.99,"No"],["CUST-1012","Pro","Month-to-Month","Debit Card",14,79.99,"Yes"],["CUST-1013","Basic","One Year","Bank Transfer",22,49.99,"No"],["CUST-1014","Basic","Month-to-Month","UPI",2,49.99,"Yes"],["CUST-1015","Enterprise","Two Year","Credit Card",40,149.99,"No"]]
+.map(r=>({id:r[0],plan:r[1],con:r[2],pay:r[3],ten:r[4],mc:r[5],ch:r[6]==="Yes"}));
+const band=t=>t<=12?"0-12 months":t<=24?"13-24 months":"25+ months";
+const uniq=k=>[...new Set(D.map(d=>d[k]))].sort();
+const fill=(id,k)=>{document.getElementById(id).innerHTML="<option>All</option>"+uniq(k).map(v=>`<option>${v}</option>`).join("")};
+fill("fc","con");fill("fp","pay");
+const $=id=>document.getElementById(id);
+const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length):0;
+function stack(rows,keyFn,order){
+  const keys=order||[...new Set(rows.map(keyFn))].sort();
+  return keys.map(k=>{const g=rows.filter(r=>keyFn(r)===k);const c=g.filter(r=>r.ch).length;
+    const p=g.length?c/g.length*100:0;
+    return `<div class="row"><div class="n">${k}</div><div class="bar" role="img" aria-label="${k}: ${c} churned of ${g.length}"><i style="width:${p}%;background:var(--c2)"></i><i style="width:${g.length?100-p:0}%;background:var(--c1)"></i></div><div class="t">${g.length?p.toFixed(0)+"%":"-"} (${g.length})</div></div>`}).join("")||"<i>No data</i>";
+}
+function worst(rows,keyFn){const m={};rows.forEach(r=>{const k=keyFn(r);m[k]=m[k]||{c:0,n:0};m[k].n++;if(r.ch)m[k].c++});
+  return Object.entries(m).map(([k,v])=>({k,r:v.c/v.n,n:v.n})).sort((a,b)=>b.r-a.r)[0]}
+function draw(){
+  const fc=$("fc").value,ft=$("ft").value,fp=$("fp").value;
+  const R=D.filter(d=>(fc==="All"||d.con===fc)&&(ft==="All"||band(d.ten)===ft)&&(fp==="All"||d.pay===fp));
+  const n=R.length,ch=R.filter(r=>r.ch),ret=R.filter(r=>!r.ch);
+  const cr=n?ch.length/n*100:0,mrr=R.reduce((s,r)=>s+r.mc,0),risk=ch.reduce((s,r)=>s+r.mc,0);
+  const K=[["Customers",n],["Churn rate",cr.toFixed(1)+"%"],["Retention rate",(n?100-cr:0).toFixed(1)+"%"],["Revenue at risk","$"+risk.toFixed(0)+"/mo"],["% of monthly revenue",(mrr?risk/mrr*100:0).toFixed(0)+"%"],["Avg tenure (all)",avg(R.map(r=>r.ten)).toFixed(1)+" mo"],["Avg tenure churned",avg(ch.map(r=>r.ten)).toFixed(1)+" mo"],["Avg tenure retained",avg(ret.map(r=>r.ten)).toFixed(1)+" mo"]];
+  $("k").innerHTML=K.map(([l,v])=>`<div class="card"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  $("c1").innerHTML=stack(R,r=>r.con);
+  $("c2").innerHTML=stack(R,r=>r.plan);
+  $("c3").innerHTML=stack(R,r=>band(r.ten),["0-12 months","13-24 months","25+ months"]);
+  const pm={};ch.forEach(r=>pm[r.pay]=(pm[r.pay]||0)+r.mc);
+  const mx=Math.max(1,...Object.values(pm));
+  $("c4").innerHTML=Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="n">${k}</div><div class="bar"><i style="width:${v/mx*100}%;background:var(--c2)"></i></div><div class="t">$${v.toFixed(0)}</div></div>`).join("")||"<i>No churned customers in this selection</i>";
+  const a=worst(R,r=>r.con),b=worst(R,r=>r.plan),c=worst(R,r=>band(r.ten));
+  const pt=Object.entries(pm).sort((x,y)=>y[1]-x[1])[0];
+  $("i1").textContent=a?`Insight: ${a.k} has the highest churn rate (${(a.r*100).toFixed(0)}%) in this view.`:"No data for this selection.";
+  $("i2").textContent=b?`Insight: ${b.k} plan churns most (${(b.r*100).toFixed(0)}%).`:"No data.";
+  $("i3").textContent=c?`Insight: the ${c.k} band has the highest churn (${(c.r*100).toFixed(0)}%). Early-life customers are the most at risk.`:"No data.";
+  $("i4").textContent=pt?`Insight: ${pt[0]} accounts for the most lost monthly revenue ($${pt[1].toFixed(0)}).`:"No revenue at risk here.";
+}
+["fc","ft","fp"].forEach(i=>$(i).addEventListener("change",draw));draw();
+</script></body></html>
